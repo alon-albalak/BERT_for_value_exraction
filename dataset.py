@@ -1,4 +1,5 @@
 import json
+import random
 import numpy as np
 from torch.utils.data import Dataset
 import torch
@@ -46,7 +47,7 @@ def map_labels_to_text(text, segments):
     return labels
 
 
-def load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=1):
+def load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=1, shuffle=True):
     """
     Load all data from Taskmaster 1
     :returns: data - a list of tokenized text, label pairs
@@ -94,6 +95,9 @@ def load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=1):
                          "labels": label,
                          "text": utterance['text']
                          })
+
+    if shuffle:
+        random.shuffle(data)
     train_data = data[:round(len(data)*train_percent)]
     val_data = data[round(len(data)*train_percent):]
 
