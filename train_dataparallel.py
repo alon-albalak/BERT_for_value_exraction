@@ -21,8 +21,8 @@ id2label = {0: "B",
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-batch_size = 5
-gradient_accumulation_steps = 100
+batch_size = 4
+gradient_accumulation_steps = 100/batch_size
 initial_lr = 1e-5
 patience_limit = 5
 
@@ -40,6 +40,9 @@ val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size,
 
 # BertForValueExtraction
 model = BertForValueExtraction(num_labels=len(label2id.keys()))
+if torch.cuda.device_count() > 1:
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
+    model = torch.nn.DataParallel(model)
 model.to(device)
 model.train()
 
@@ -54,7 +57,6 @@ for epoch in range(100):
     optimizer.zero_grad()
     pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
     for i, batch in pbar:
-
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
         token_type_ids = batch['token_type_ids']
@@ -64,12 +66,13 @@ for epoch in range(100):
         # print(f"attention_mask: {attention_mask.shape} - {attention_mask}")
         # print(f"token_type_ids: {token_type_ids.shape} - {token_type_ids}")
         # print(f"labels: {labels.shape} - {labels}")
-        loss = model.calculate_loss(input_ids=input_ids,
-                                    attention_mask=attention_mask,
-                                    token_type_ids=token_type_ids,
-                                    labels=labels)
-        loss.backward()
-        total_loss += loss.item()
+        outputs = model(input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        token_type_ids=token_type_ids,
+                        labels=labels)
+        loss = outputs.loss
+        loss.sum().backward()
+        total_loss += loss.sum().item()
         if ((i+1) % gradient_accumulation_steps) == 0:
             optimizer.step()
             optimizer.zero_grad()
@@ -89,9 +92,12 @@ for epoch in range(100):
             labels = batch['labels']
             text = batch['text']
 
-            preds = model.predict(input_ids=input_ids,
-                                  attention_mask=attention_mask,
-                                  token_type_ids=token_type_ids)
+            outputs = model(input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids)
+
+            logits = outputs.logits
+            preds = torch.max(logits, dim=2)[1]
 
             tp, fp, fn, tn = model.evaluate(preds.tolist(), labels.tolist(), attention_mask.tolist())
             TP += tp
