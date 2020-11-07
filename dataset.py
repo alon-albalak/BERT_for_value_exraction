@@ -56,7 +56,7 @@ def load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=1, shuffl
 
     woz_dialogs = json.load(open("Taskmaster/TM-1-2019/woz-dialogs.json"))
     for i, dialog in enumerate(woz_dialogs):
-        if for_testing_purposes and i > 3:
+        if for_testing_purposes and i > 10:
             break
         for utterance in dialog['utterances']:
             tokens = tokenizer(utterance['text'], return_tensors="np", truncation=True)
@@ -77,7 +77,7 @@ def load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=1, shuffl
 
     self_dialogs = json.load(open("Taskmaster/TM-1-2019/self-dialogs.json"))
     for i, dialog in enumerate(self_dialogs):
-        if for_testing_purposes and i > 3:
+        if for_testing_purposes and i > 10:
             break
         for utterance in dialog['utterances']:
             tokens = tokenizer(utterance['text'], return_tensors="np", truncation=True)
@@ -143,10 +143,18 @@ class collate_class(object):
             batch_labels.append(pad_sequence(item['labels'], max_len, label2id["O"]))
             batch_text.append(item['text'])
 
+        # return {
+        #     "input_ids": torch.tensor(batch_input_ids).to(self.device),
+        #     "attention_mask": torch.tensor(batch_attention_mask).to(self.device),
+        #     "token_type_ids": torch.tensor(batch_token_type_ids).to(self.device),
+        #     "labels": torch.tensor(batch_labels).to(self.device),
+        #     "text": batch_text
+        # }
+
         return {
-            "input_ids": torch.tensor(batch_input_ids).to(self.device),
-            "attention_mask": torch.tensor(batch_attention_mask).to(self.device),
-            "token_type_ids": torch.tensor(batch_token_type_ids).to(self.device),
-            "labels": torch.tensor(batch_labels).to(self.device),
+            "input_ids": torch.tensor(batch_input_ids),
+            "attention_mask": torch.tensor(batch_attention_mask),
+            "token_type_ids": torch.tensor(batch_token_type_ids),
+            "labels": torch.tensor(batch_labels),
             "text": batch_text
         }
