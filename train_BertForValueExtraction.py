@@ -41,6 +41,7 @@ val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size,
 # BertForValueExtraction
 model = BertForValueExtraction(num_labels=len(label2id.keys()))
 if torch.cuda.device_count() > 1:
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
     model = torch.nn.DataParallel(model)
 model.to(device)
 model.train()
@@ -56,7 +57,7 @@ for epoch in range(100):
     optimizer.zero_grad()
     pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
     for i, batch in pbar:
-
+        print(f"Outside model: {batch['input_ids'].shape}")
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
         token_type_ids = batch['token_type_ids']

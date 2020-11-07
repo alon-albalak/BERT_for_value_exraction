@@ -24,6 +24,7 @@ class BertForValueExtraction(torch.nn.Module):
                                                                            return_dict=True)
 
     def calculate_loss(self, input_ids, attention_mask, token_type_ids, labels):
+        print(f"Inside model: {input_ids.shape}")
         outputs = self.token_classifier(input_ids=input_ids,
                                         attention_mask=attention_mask,
                                         token_type_ids=token_type_ids,
