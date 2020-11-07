@@ -44,7 +44,7 @@ class BertForValueExtraction(torch.nn.Module):
 
     def evaluate(self, preds, labels, attention_mask):
         TP, FP, FN, TN = 0, 0, 0, 0
-        for pred, label, mask in zip(preds.tolist(), labels.tolist(), attention_mask.tolist()):
+        for pred, label, mask in zip(preds, labels, attention_mask):
             for p, l, m in zip(pred, label, mask):
                 if m == 1:
                     if id2label[l] != "O":
@@ -58,9 +58,6 @@ class BertForValueExtraction(torch.nn.Module):
                         else:
                             FP += 1
         return TP, FP, FN, TN
-
-    def calculate_F1(self):
-        pass
 
     def save_(self, model_path):
         self.model.save_pretrained(model_path)
