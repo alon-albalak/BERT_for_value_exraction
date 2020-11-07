@@ -67,10 +67,11 @@ for epoch in range(100):
         # print(f"attention_mask: {attention_mask.shape} - {attention_mask}")
         # print(f"token_type_ids: {token_type_ids.shape} - {token_type_ids}")
         # print(f"labels: {labels.shape} - {labels}")
-        loss = model.calculate_loss(input_ids=input_ids,
-                                    attention_mask=attention_mask,
-                                    token_type_ids=token_type_ids,
-                                    labels=labels)
+        outputs = model(input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        token_type_ids=token_type_ids,
+                        labels=labels)
+        loss = outputs.loss
         loss.backward()
         total_loss += loss.item()
         if ((i+1) % gradient_accumulation_steps) == 0:
@@ -92,9 +93,12 @@ for epoch in range(100):
             labels = batch['labels']
             text = batch['text']
 
-            preds = model.predict(input_ids=input_ids,
-                                  attention_mask=attention_mask,
-                                  token_type_ids=token_type_ids)
+            outputs = model(input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids)
+
+            logits = outputs.logits
+            preds = torch.max(logits, dim=2)[1]
 
             tp, fp, fn, tn = model.evaluate(preds.tolist(), labels.tolist(), attention_mask.tolist())
             TP += tp
