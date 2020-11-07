@@ -72,7 +72,7 @@ for epoch in range(100):
                         token_type_ids=token_type_ids,
                         labels=labels)
         loss = outputs.loss
-        loss.backward()
+        loss.sum().backward()
         total_loss += loss.item()
         if ((i+1) % gradient_accumulation_steps) == 0:
             optimizer.step()
