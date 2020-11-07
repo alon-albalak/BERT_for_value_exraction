@@ -19,6 +19,8 @@ id2label = {0: "B",
             4: "O"
             }
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 batch_size = 16
 gradient_accumulation_steps = 32/batch_size
 initial_lr = 1e-5
@@ -31,13 +33,16 @@ train_data, val_data = load_TM_1_data(tokenizer, for_testing_purposes=False, tra
 train_dataset = TM_1_dataset(train_data)
 val_dataset = TM_1_dataset(val_data)
 
-collator = collate_class(tokenizer.pad_token_id, device='cuda')
+collator = collate_class(tokenizer.pad_token_id, device=device)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator)
 val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator)
 
 
 # BertForValueExtraction
-model = BertForValueExtraction(device='cuda', num_labels=len(label2id.keys()))
+model = BertForValueExtraction(num_labels=len(label2id.keys()))
+if torch.cuda.device_count() > 1:
+    model = torch.nn.DataParallel(model)
+model.to(device)
 model.train()
 
 optimizer = torch.optim.Adam(params=model.parameters(), lr=initial_lr)

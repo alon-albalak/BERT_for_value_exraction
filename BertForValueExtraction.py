@@ -17,26 +17,24 @@ id2label = {0: "B",
 
 
 class BertForValueExtraction(torch.nn.Module):
-    def __init__(self, device, num_labels, from_pretrained='bert-base-uncased'):
+    def __init__(self, num_labels, from_pretrained='bert-base-uncased'):
         super(BertForValueExtraction, self).__init__()
-        self.model = BertForTokenClassification.from_pretrained(from_pretrained,
-                                                                num_labels=num_labels,
-                                                                return_dict=True)
-        self.device = device
-        self.model.to(self.device)
+        self.token_classifier = BertForTokenClassification.from_pretrained(from_pretrained,
+                                                                           num_labels=num_labels,
+                                                                           return_dict=True)
 
     def calculate_loss(self, input_ids, attention_mask, token_type_ids, labels):
-        outputs = self.model(input_ids=input_ids,
-                             attention_mask=attention_mask,
-                             token_type_ids=token_type_ids,
-                             labels=labels)
+        outputs = self.token_classifier(input_ids=input_ids,
+                                        attention_mask=attention_mask,
+                                        token_type_ids=token_type_ids,
+                                        labels=labels)
         return outputs.loss
 
     def predict(self, input_ids, attention_mask, token_type_ids):
-        outputs = self.model(input_ids=input_ids,
-                             attention_mask=attention_mask,
-                             token_type_ids=token_type_ids
-                             )
+        outputs = self.token_classifier(input_ids=input_ids,
+                                        attention_mask=attention_mask,
+                                        token_type_ids=token_type_ids
+                                        )
 
         logits = outputs.logits
         preds = torch.max(logits, dim=2)[1]
@@ -60,4 +58,4 @@ class BertForValueExtraction(torch.nn.Module):
         return TP, FP, FN, TN
 
     def save_(self, model_path):
-        self.model.save_pretrained(model_path)
+        self.token_classifier.save_pretrained(model_path)
