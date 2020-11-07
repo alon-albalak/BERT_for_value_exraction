@@ -23,19 +23,25 @@ class BertForValueExtraction(torch.nn.Module):
                                                                            num_labels=num_labels,
                                                                            return_dict=True)
 
-    def calculate_loss(self, input_ids, attention_mask, token_type_ids, labels):
+    def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
         print(f"Inside model: {input_ids.shape}")
-        outputs = self.token_classifier(input_ids=input_ids,
-                                        attention_mask=attention_mask,
-                                        token_type_ids=token_type_ids,
-                                        labels=labels)
+        return self.token_classifier(input_ids=input_ids,
+                                     attention_mask=attention_mask,
+                                     token_type_ids=token_type_ids,
+                                     labels=labels)
+
+    def calculate_loss(self, input_ids, attention_mask, token_type_ids, labels):
+        outputs = self.forward(input_ids=input_ids,
+                               attention_mask=attention_mask,
+                               token_type_ids=token_type_ids,
+                               labels=labels)
         return outputs.loss
 
     def predict(self, input_ids, attention_mask, token_type_ids):
-        outputs = self.token_classifier(input_ids=input_ids,
-                                        attention_mask=attention_mask,
-                                        token_type_ids=token_type_ids
-                                        )
+        outputs = self.forward(input_ids=input_ids,
+                               attention_mask=attention_mask,
+                               token_type_ids=token_type_ids
+                               )
 
         logits = outputs.logits
         preds = torch.max(logits, dim=2)[1]
