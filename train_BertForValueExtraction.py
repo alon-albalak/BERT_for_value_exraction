@@ -57,7 +57,6 @@ for epoch in range(100):
     optimizer.zero_grad()
     pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
     for i, batch in pbar:
-        print(f"Outside model: {batch['input_ids'].shape}")
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
         token_type_ids = batch['token_type_ids']
@@ -73,7 +72,7 @@ for epoch in range(100):
                         labels=labels)
         loss = outputs.loss
         loss.sum().backward()
-        total_loss += loss.item()
+        total_loss += loss.sum().item()
         if ((i+1) % gradient_accumulation_steps) == 0:
             optimizer.step()
             optimizer.zero_grad()
