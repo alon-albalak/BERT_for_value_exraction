@@ -31,7 +31,7 @@ num_workers = 4
 def main():
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
 
-    train_data, val_data = load_TM_1_data(tokenizer, for_testing_purposes=True, train_percent=0.9)
+    train_data, val_data = load_TM_1_data(tokenizer, for_testing_purposes=False, train_percent=0.9)
 
     train_dataset = TM_1_dataset(train_data)
     val_dataset = TM_1_dataset(val_data)
