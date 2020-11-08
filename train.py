@@ -1,7 +1,9 @@
+import os
 from tqdm import tqdm
 import torch
+from torch.cuda.amp import autocast, GradScaler
 from transformers import BertTokenizer, BertForTokenClassification
-from dataset import load_TM_1_data, TM_1_dataset, collate_class
+from dataset import load_taskmaster_datasets, taskmaster_dataset, collate_class
 from BertForValueExtraction import BertForValueExtraction
 import utils
 
@@ -19,29 +21,38 @@ id2label = {0: "B",
             4: "O"
             }
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-batch_size = 5
-gradient_accumulation_steps = 100
-initial_lr = 1e-5
-patience_limit = 5
-num_workers = 4
+def main(**kwargs):
+    fp16 = kwargs['fp16']
+    batch_size = kwargs['batch_size']
+    num_workers = kwargs['num_workers']
+    pin_memory = kwargs['pin_memory']
+    patience_limit = kwargs['patience']
+    initial_lr = kwargs['learning_rate']
+    gradient_accumulation_steps = kwargs['grad_accumulation_steps']
+    device = kwargs['device']
+    epochs = kwargs['epochs']
 
+    if fp16:
+        scaler = GradScaler()
 
-def main():
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
 
-    train_data, val_data = load_TM_1_data(tokenizer, for_testing_purposes=False, train_percent=0.9)
+    train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
 
-    train_dataset = TM_1_dataset(train_data)
-    val_dataset = TM_1_dataset(val_data)
+    train_dataset = taskmaster_dataset(train_data)
+    val_dataset = taskmaster_dataset(val_data)
 
-    collator = collate_class(tokenizer.pad_token_id, device=device)
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator, num_workers=num_workers, pin_memory=True)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator, num_workers=num_workers, pin_memory=True)
+    collator = collate_class(tokenizer.pad_token_id)
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator, num_workers=num_workers, pin_memory=pin_memory)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=int(batch_size/2), shuffle=True, collate_fn=collator, num_workers=num_workers, pin_memory=pin_memory)
 
     # BertForValueExtraction
-    model = BertForValueExtraction(num_labels=len(label2id.keys()))
+    if kwargs['model_path'] and os.path.isdir(kwargs['model_path']):
+        from_pretrained = kwargs['model_path']
+    else:
+        from_pretrained = 'bert-base-uncased'
+    model = BertForValueExtraction(num_labels=len(label2id.keys()), from_pretrained=from_pretrained)
     model.to(device)
     model.train()
 
@@ -50,7 +61,7 @@ def main():
 
     best_acc, count = 0, 0
 
-    for epoch in range(100):
+    for epoch in range(epochs):
         # train loop
         total_loss = 0
         optimizer.zero_grad()
@@ -66,14 +77,30 @@ def main():
             # print(f"attention_mask: {attention_mask.shape} - {attention_mask}")
             # print(f"token_type_ids: {token_type_ids.shape} - {token_type_ids}")
             # print(f"labels: {labels.shape} - {labels}")
-            loss = model.calculate_loss(input_ids=input_ids,
-                                        attention_mask=attention_mask,
-                                        token_type_ids=token_type_ids,
-                                        labels=labels)
-            loss.backward()
-            total_loss += loss.item()
+            if fp16:
+                with autocast():
+                    loss = model.calculate_loss(input_ids=input_ids,
+                                                attention_mask=attention_mask,
+                                                token_type_ids=token_type_ids,
+                                                labels=labels)
+                    total_loss += loss.item()
+                    loss = loss/gradient_accumulation_steps
+
+                scaler.scale(loss).backward()
+
+            else:
+                loss = model.calculate_loss(input_ids=input_ids,
+                                            attention_mask=attention_mask,
+                                            token_type_ids=token_type_ids,
+                                            labels=labels)
+                loss.backward()
+                total_loss += loss.item()
             if ((i+1) % gradient_accumulation_steps) == 0:
-                optimizer.step()
+                if fp16:
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    optimizer.step()
                 optimizer.zero_grad()
 
             batch_num = ((i+1)/gradient_accumulation_steps)
@@ -82,24 +109,7 @@ def main():
         # validation loop
         model.eval()
         with torch.no_grad():
-            loss = 0
-            TP, FP, FN, TN = 0, 0, 0, 0
-            for batch in tqdm(val_dataloader):
-                input_ids = batch['input_ids'].to(device)
-                attention_mask = batch['attention_mask'].to(device)
-                token_type_ids = batch['token_type_ids'].to(device)
-                labels = batch['labels'].to(device)
-                text = batch['text']
-
-                preds = model.predict(input_ids=input_ids,
-                                      attention_mask=attention_mask,
-                                      token_type_ids=token_type_ids)
-
-                tp, fp, fn, tn = model.evaluate(preds.tolist(), labels.tolist(), attention_mask.tolist())
-                TP += tp
-                FP += fp
-                FN += fn
-                TN += tn
+            TP, FP, FN, TN = model.evaluate(val_dataloader, device)
 
             pr = utils.calculate_precision(TP, FP)
             re = utils.calculate_recall(TP, FN)
@@ -122,10 +132,12 @@ def main():
 
         model.train()
 
-    # print(tokenizer.decode(inputs['input_ids'].squeeze()))
-
+    if kwargs['model_path']:
+        model.save_(kwargs['model_path'])
 
 if __name__ == "__main__":
-    if num_workers > 0:
+    args = utils.parse_args()
+
+    if args['num_workers'] > 0:
         torch.multiprocessing.set_start_method("spawn")
-    main()
+    main(**args)
