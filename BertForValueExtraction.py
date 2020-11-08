@@ -88,3 +88,4 @@ class BertForValueExtraction(torch.nn.Module):
 
     def save_(self, model_path):
         self.token_classifier.save_pretrained(model_path)
+        print(f"Saving model at {model_path}")

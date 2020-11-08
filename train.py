@@ -122,18 +122,18 @@ def main(**kwargs):
             if balanced_acc > best_acc:
                 best_acc = balanced_acc
                 count = 0
+                if kwargs['model_path']:
+                    model.save_(f"{kwargs['model_path']}-ACC{best_acc:.4f}")
+
             else:
                 count += 1
 
-            print(count)
             if count == patience_limit:
                 print("ran out of patience stopping early")
                 break
 
         model.train()
 
-    if kwargs['model_path']:
-        model.save_(kwargs['model_path'])
 
 if __name__ == "__main__":
     args = utils.parse_args()
