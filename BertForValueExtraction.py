@@ -1,5 +1,6 @@
 from transformers import BertForTokenClassification
 import torch
+from tqdm import tqdm
 
 label2id = {"B": 0,
             "I": 1,
@@ -46,7 +47,29 @@ class BertForValueExtraction(torch.nn.Module):
         preds = torch.max(logits, dim=2)[1]
         return preds
 
-    def evaluate(self, preds, labels, attention_mask):
+    def evaluate(self, dataloader, device):
+        with torch.no_grad():
+            TP, FP, FN, TN = 0, 0, 0, 0
+            for batch in tqdm(dataloader):
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                token_type_ids = batch['token_type_ids'].to(device)
+                labels = batch['labels'].to(device)
+                text = batch['text']
+
+                preds = self.predict(input_ids=input_ids,
+                                     attention_mask=attention_mask,
+                                     token_type_ids=token_type_ids)
+
+                tp, fp, fn, tn = self.evaluate_batch(preds.tolist(), labels.tolist(), attention_mask.tolist())
+                TP += tp
+                FP += fp
+                FN += fn
+                TN += tn
+
+        return TP, FP, FN, TN
+
+    def evaluate_batch(self, preds, labels, attention_mask):
         TP, FP, FN, TN = 0, 0, 0, 0
         for pred, label, mask in zip(preds, labels, attention_mask):
             for p, l, m in zip(pred, label, mask):
