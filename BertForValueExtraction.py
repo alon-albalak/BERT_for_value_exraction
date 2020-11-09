@@ -37,7 +37,7 @@ class BertForValueExtraction(torch.nn.Module):
                                labels=labels)
         return outputs.loss
 
-    def predict(self, input_ids, attention_mask, token_type_ids):
+    def predict(self, input_ids, attention_mask=None, token_type_ids=None):
         outputs = self.forward(input_ids=input_ids,
                                attention_mask=attention_mask,
                                token_type_ids=token_type_ids
@@ -89,3 +89,24 @@ class BertForValueExtraction(torch.nn.Module):
     def save_(self, model_path):
         self.token_classifier.save_pretrained(model_path)
         print(f"Saving model at {model_path}")
+
+    def predict_sentence_values(self, tokenizer, sentence):
+        input_ids = tokenizer(sentence, return_tensors="pt")['input_ids']
+        preds = self.predict(input_ids).numpy()[0]
+        input_ids = input_ids.numpy()[0]
+
+        values = []
+        current_value_tokens = []
+        for t, p in zip(input_ids, preds):
+            if id2label[p] == "O" and current_value_tokens:
+                values.append(tokenizer.decode(current_value_tokens))
+                current_value_tokens = []
+            if id2label[p] == "B":
+                if current_value_tokens:
+                    values.append(tokenizer.decode(current_value_tokens))
+                current_value_tokens = [t]
+            if id2label[p] == "I":
+                current_value_tokens.append(t)
+        if current_value_tokens:
+            values.append(tokenizer.decode(current_value_tokens))
+        return values
