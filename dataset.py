@@ -3,6 +3,7 @@ import random
 import numpy as np
 from torch.utils.data import Dataset
 import torch
+from tqdm import tqdm
 
 # We follow the BILUO scheme
 # B-egin: The first token of a multi-token entity
@@ -78,7 +79,7 @@ def load_taskmaster_datasets(datasets, tokenizer, for_testing_purposes=True, tra
     :returns: data - a list of tokenized text, label pairs
     """
     data = []
-    for dataset in datasets:
+    for dataset in tqdm(datasets):
         data.extend(load_dataset(dataset, tokenizer, for_testing_purposes))
 
     if shuffle:

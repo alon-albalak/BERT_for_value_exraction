@@ -18,11 +18,14 @@ id2label = {0: "B",
 
 
 class BertForValueExtraction(torch.nn.Module):
-    def __init__(self, num_labels, from_pretrained='bert-base-uncased'):
+    def __init__(self, num_labels, from_pretrained='bert-base-uncased', freeze_bert=False):
         super(BertForValueExtraction, self).__init__()
         self.token_classifier = BertForTokenClassification.from_pretrained(from_pretrained,
                                                                            num_labels=num_labels,
                                                                            return_dict=True)
+        if freeze_bert:
+            for param in self.token_classifier.bert.bert.parameters():
+                param.requires_grad = False
 
     def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
         return self.token_classifier(input_ids=input_ids,

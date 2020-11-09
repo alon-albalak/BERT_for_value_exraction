@@ -32,11 +32,12 @@ def main(**kwargs):
     gradient_accumulation_steps = kwargs['grad_accumulation_steps']
     device = kwargs['device']
     epochs = kwargs['epochs']
+    freeze_bert = kwargs['freeze_bert_layers']
 
     if fp16:
         scaler = GradScaler()
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128, freeze_bert=freeze_bert)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
 
     train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
 

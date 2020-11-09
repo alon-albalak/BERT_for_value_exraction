@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument('--pin_memory', action='store_false')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--testing_for_bugs', action='store_true')
+    parser.add_argument('--freeze_bert_layers', action='store_true')
 
     args = parser.parse_args()
 
