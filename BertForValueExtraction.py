@@ -24,7 +24,7 @@ class BertForValueExtraction(torch.nn.Module):
                                                                            num_labels=num_labels,
                                                                            return_dict=True)
         if freeze_bert:
-            for param in self.token_classifier.bert.bert.parameters():
+            for param in self.token_classifier.bert.parameters():
                 param.requires_grad = False
 
     def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
