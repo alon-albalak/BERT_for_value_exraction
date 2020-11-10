@@ -48,7 +48,37 @@ def map_labels_to_text(text, segments):
     return labels
 
 
-def load_dataset(dataset_path, tokenizer, for_testing_purposes=False):
+def load_multiwoz_dataset(dataset_path, tokenizer, for_testing_purposes=False):
+    EXPERIMENT_DOMAINS = ["hotel", "train", "restaurant", "attraction", "taxi"]
+    data = []
+    dialogs = json.load(open(dataset_path))
+
+    for i, dialog_dict in enumerate(dialogs):
+        if for_testing_purposes and i > 10:
+            break
+        skip = False
+        for domain in dialog_dict['domains']:
+            if domain not in EXPERIMENT_DOMAINS:
+                skip = True
+
+        if not skip:
+            for turn in dialog_dict['dialogue']:
+                tokens = tokenizer(turn['transcript'], return_tensors="np", truncation=True)
+                tokenized_text = tokens['input_ids'][0]
+                attention_mask = tokens['attention_mask'][0]
+                token_type_ids = tokens['token_type_ids'][0]
+                turn_labels = [tokenizer(v, return_tensors="np")['input_ids'][0][1:-1] for ds, v in turn['turn_label']]
+                label = map_labels_to_text(tokenized_text, turn_labels)
+                data.append({"input_ids": tokenized_text,
+                             "attention_mask": attention_mask,
+                             "token_type_ids": token_type_ids,
+                             "labels": label,
+                             "text": turn['transcript']
+                             })
+    return data
+
+
+def load_taskmaster_dataset(dataset_path, tokenizer, for_testing_purposes=False):
     data = []
     dialogs = json.load(open(dataset_path))
     for i, dialog in enumerate(dialogs):
@@ -80,7 +110,7 @@ def load_taskmaster_datasets(datasets, tokenizer, for_testing_purposes=True, tra
     """
     data = []
     for dataset in tqdm(datasets):
-        data.extend(load_dataset(dataset, tokenizer, for_testing_purposes))
+        data.extend(load_taskmaster_dataset(dataset, tokenizer, for_testing_purposes))
 
     if shuffle:
         random.shuffle(data)
@@ -90,7 +120,7 @@ def load_taskmaster_datasets(datasets, tokenizer, for_testing_purposes=True, tra
     return train_data, val_data
 
 
-class taskmaster_dataset(Dataset):
+class VE_dataset(Dataset):
     def __init__(self, data):
         self.data = data
 
