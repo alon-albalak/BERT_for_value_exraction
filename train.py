@@ -3,7 +3,7 @@ from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
 from transformers import BertTokenizer, BertForTokenClassification
-from dataset import load_taskmaster_datasets, VE_dataset, collate_class
+from dataset import load_taskmaster_datasets, load_multiwoz_dataset, VE_dataset, collate_class
 from BertForValueExtraction import BertForValueExtraction
 import utils
 
@@ -39,7 +39,12 @@ def main(**kwargs):
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
 
-    train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
+    if kwargs['dataset'] == "TM":
+        train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
+
+    if kwargs['dataset'] == "MW":
+        train_data = load_multiwoz_dataset("multi-woz/train_dials.json", tokenizer, kwargs['testing_for_bugs'])
+        val_data = load_multiwoz_dataset("multi-woz/dev_dials.json", tokenizer, kwargs['testing_for_bugs'])
 
     train_dataset = VE_dataset(train_data)
     val_dataset = VE_dataset(val_data)
