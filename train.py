@@ -3,7 +3,7 @@ from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
 from transformers import BertTokenizer, BertForTokenClassification
-from dataset import load_taskmaster_datasets, taskmaster_dataset, collate_class
+from dataset import load_taskmaster_datasets, VE_dataset, collate_class
 from BertForValueExtraction import BertForValueExtraction
 import utils
 
@@ -37,12 +37,12 @@ def main(**kwargs):
     if fp16:
         scaler = GradScaler()
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128, freeze_bert=freeze_bert)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', model_max_length=128)  # for TM_1, out of 303066 samples, 5 are above 128 tokens
 
     train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
 
-    train_dataset = taskmaster_dataset(train_data)
-    val_dataset = taskmaster_dataset(val_data)
+    train_dataset = VE_dataset(train_data)
+    val_dataset = VE_dataset(val_data)
 
     collator = collate_class(tokenizer.pad_token_id)
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collator, num_workers=num_workers, pin_memory=pin_memory)
@@ -53,7 +53,7 @@ def main(**kwargs):
         from_pretrained = kwargs['model_path']
     else:
         from_pretrained = 'bert-base-uncased'
-    model = BertForValueExtraction(num_labels=len(label2id.keys()), from_pretrained=from_pretrained)
+    model = BertForValueExtraction(num_labels=len(label2id.keys()), from_pretrained=from_pretrained, freeze_bert=freeze_bert)
     model.to(device)
     model.train()
 
