@@ -3,7 +3,8 @@ from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
 from transformers import BertTokenizer, BertForTokenClassification
-from dataset import load_taskmaster_datasets, load_multiwoz_dataset, VE_dataset, collate_class
+from dataset import load_taskmaster_datasets, load_multiwoz_dataset, load_MW_22_dataset_training, \
+                     load_MW_22_dataset_validation, VE_dataset, collate_class
 from BertForValueExtraction import BertForValueExtraction
 import utils
 
@@ -33,6 +34,7 @@ def main(**kwargs):
     device = kwargs['device']
     epochs = kwargs['epochs']
     freeze_bert = kwargs['freeze_bert_layers']
+    slots = kwargs['slots']
 
     if fp16:
         scaler = GradScaler()
@@ -43,8 +45,12 @@ def main(**kwargs):
         train_data, val_data = load_taskmaster_datasets(utils.datasets, tokenizer, train_percent=0.9, for_testing_purposes=kwargs['testing_for_bugs'])
 
     if kwargs['dataset'] == "MW":
-        train_data = load_multiwoz_dataset("multi-woz/train_dials.json", tokenizer, kwargs['testing_for_bugs'])
-        val_data = load_multiwoz_dataset("multi-woz/dev_dials.json", tokenizer, kwargs['testing_for_bugs'])
+        train_data = load_multiwoz_dataset("multi-woz/train_dials.json", tokenizer, slots, kwargs['testing_for_bugs'])
+        val_data = load_multiwoz_dataset("multi-woz/dev_dials.json", tokenizer, slots, kwargs['testing_for_bugs'])
+
+    if kwargs['dataset'] == "MW22":
+        train_data = load_MW_22_dataset_training(tokenizer, slots, kwargs['testing_for_bugs'])
+        val_data = load_MW_22_dataset_validation(tokenizer, slots, kwargs['testing_for_bugs'])
 
     train_dataset = VE_dataset(train_data)
     val_dataset = VE_dataset(val_data)
