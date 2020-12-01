@@ -13,6 +13,16 @@ datasets = [
     "Taskmaster/TM-2-2020/data/sports.json"
 ]
 
+noncat_slot_names = ["restaurant-food", "restaurant-name", "restaurant-booktime",
+                     "attraction-name", "hotel-name", "taxi-destination",
+                     "taxi-departure", "taxi-arriveby", "taxi-leaveat",
+                     "train-arriveby", "train-leaveat"]
+cat_slot_names = ["restaurant-pricerange", "restaurant-area", "restaurant-bookday", "restaurant-bookpeople",
+                  "attraction-area", "attraction-type", "hotel-pricerange", "hotel-parking",
+                  "hotel-internet", "hotel-stars", "hotel-area", "hotel-type", "hotel-bookpeople",
+                  "hotel-bookday", "hotel-bookstay", "train-destination", "train-departure",
+                  "train-day", "train-bookpeople"]
+
 
 def parse_args():
 
@@ -29,11 +39,19 @@ def parse_args():
     parser.add_argument('--testing_for_bugs', action='store_true')
     parser.add_argument('--freeze_bert_layers', action='store_true')
     parser.add_argument('--dataset', type=str, default=None,
-                        choices=['TM', 'MW'])
+                        choices=['TM', 'MW', 'MW22'])
+    parser.add_argument('--slots', type=str, default="all",
+                        choices=["all", "noncat", "cat"])
 
     args = parser.parse_args()
 
     setattr(args, 'device', torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    if args.slots == "noncat":
+        setattr(args, "slots", noncat_slot_names)
+    elif args.slots == "cat":
+        setattr(args, "slots", cat_slot_names)
+    else:
+        setattr(args, "slots", noncat_slot_names+cat_slot_names)
 
     return vars(args)
 
